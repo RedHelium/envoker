@@ -1,0 +1,11 @@
+name = "envoker"
+version = "1.0.0"
+description = "Typed environment variable readers for Gleam built on top of envoy."
+links = [{ title = "HexDocs", href = "https://hexdocs.pm/envoker/" }]
+
+[dependencies]
+gleam_stdlib = ">= 0.44.0 and < 2.0.0"
+envoy = ">= 1.1.0 and < 2.0.0"
+
+[dev_dependencies]
+gleeunit = ">= 1.0.0 and < 2.0.0"
