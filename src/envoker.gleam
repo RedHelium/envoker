@@ -79,3 +79,31 @@ pub fn read_optional_with_parser(
 ) -> Result(option.Option(a), EnvFieldError) {
   env.read_optional_with_parser(field_name, default, expected_type, parser)
 }
+
+pub fn read_required_with_parser_detailed(
+  field_name: String,
+  default: option.Option(a),
+  expected_type: String,
+  parser: fn(String) -> Result(a, String),
+) -> Result(a, EnvFieldError) {
+  env.read_required_with_parser_detailed(
+    field_name,
+    default,
+    expected_type,
+    parser,
+  )
+}
+
+pub fn read_optional_with_parser_detailed(
+  field_name: String,
+  default: option.Option(a),
+  expected_type: String,
+  parser: fn(String) -> Result(a, String),
+) -> Result(option.Option(a), EnvFieldError) {
+  env.read_optional_with_parser_detailed(
+    field_name,
+    default,
+    expected_type,
+    parser,
+  )
+}

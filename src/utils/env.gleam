@@ -76,8 +76,7 @@ pub fn read_optional_bool(
 }
 
 /// Reads a required string environment variable.
-/// This is not a raw read: the value always goes through `string.trim`,
-/// so leading and trailing whitespace is removed before returning.
+/// This is not a raw read: the value always goes through `string.trim`.
 /// Uses `default` when the field is missing or empty, if provided.
 pub fn read_required_string(
   field_name: String,
@@ -89,8 +88,7 @@ pub fn read_required_string(
 }
 
 /// Reads an optional string environment variable.
-/// This is not a raw read: the value always goes through `string.trim`,
-/// so leading and trailing whitespace is removed before returning.
+/// This is not a raw read: the value always goes through `string.trim`.
 /// Uses `default` when the field is missing or empty, if provided.
 pub fn read_optional_string(
   field_name: String,
@@ -102,8 +100,7 @@ pub fn read_optional_string(
 }
 
 /// Reads a required environment variable with a custom parser.
-/// The value is normalized with `string.trim` before parsing.
-/// Uses `default` when the field is missing or empty, if provided.
+/// The parser can only return the fact of an error, without details.
 pub fn read_required_with_parser(
   field_name: String,
   default: option.Option(a),
@@ -112,23 +109,59 @@ pub fn read_required_with_parser(
 ) -> Result(a, EnvFieldError) {
   unwrap_required(
     field_name,
-    read_value(field_name, Required, default, expected_type, parser),
+    read_value(field_name, Required, default, expected_type, fn(value) {
+      parser(value)
+      |> result.map_error(fn(_) { option.None })
+    }),
   )
 }
 
 /// Reads an optional environment variable with a custom parser.
-/// The value is normalized with `string.trim` before parsing.
-/// Uses `default` when the field is missing or empty, if provided.
+/// The parser can only return the fact of an error, without details.
 pub fn read_optional_with_parser(
   field_name: String,
   default: option.Option(a),
   expected_type: String,
   parser: fn(String) -> Result(a, Nil),
 ) -> Result(option.Option(a), EnvFieldError) {
-  read_value(field_name, Optional, default, expected_type, parser)
+  read_value(field_name, Optional, default, expected_type, fn(value) {
+    parser(value)
+    |> result.map_error(fn(_) { option.None })
+  })
 }
 
-/// Parses `true` / `false` string values without case sensitivity.
+/// Reads a required environment variable with a custom parser.
+/// The parser can return a text reason that is written into `details`.
+pub fn read_required_with_parser_detailed(
+  field_name: String,
+  default: option.Option(a),
+  expected_type: String,
+  parser: fn(String) -> Result(a, String),
+) -> Result(a, EnvFieldError) {
+  unwrap_required(
+    field_name,
+    read_value(field_name, Required, default, expected_type, fn(value) {
+      parser(value)
+      |> result.map_error(option.Some)
+    }),
+  )
+}
+
+/// Reads an optional environment variable with a custom parser.
+/// The parser can return a text reason that is written into `details`.
+pub fn read_optional_with_parser_detailed(
+  field_name: String,
+  default: option.Option(a),
+  expected_type: String,
+  parser: fn(String) -> Result(a, String),
+) -> Result(option.Option(a), EnvFieldError) {
+  read_value(field_name, Optional, default, expected_type, fn(value) {
+    parser(value)
+    |> result.map_error(option.Some)
+  })
+}
+
+/// Parses `true` / `false` values without case sensitivity.
 fn parse_bool(field: String) -> Result(Bool, Nil) {
   case string.lowercase(field) {
     "true" -> Ok(True)
@@ -142,18 +175,18 @@ fn read_value(
   presence: Presence,
   default: option.Option(a),
   expected_type: String,
-  parser: fn(String) -> Result(a, Nil),
+  parser: fn(String) -> Result(a, option.Option(String)),
 ) -> Result(option.Option(a), EnvFieldError) {
   case envoy.get(field_name) {
-    Ok(field) -> {
-      let field = string.trim(field)
+    Ok(raw_field) -> {
+      let field = string.trim(raw_field)
       case field {
         "" -> handle_missing_or_empty(field_name, presence, default, True)
         _ ->
           parser(field)
           |> result.map(option.Some)
-          |> result.map_error(fn(_) {
-            ParseFieldError(field_name, expected_type)
+          |> result.map_error(fn(details) {
+            ParseFieldError(field_name, expected_type, field, details)
           })
       }
     }
